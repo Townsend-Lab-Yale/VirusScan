@@ -1,5 +1,4 @@
- 
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 use warnings;
 #use POSIX;
@@ -15,7 +14,7 @@ my $normal = "\e[0m";
 
 #usage information
 (my $usage = <<OUT) =~ s/\t+//g;
-This script will run the virus discovery pipeline on LSF cluster.
+This script will run the virus discovery pipeline on slurm cluster.
 Pipeline version: $version
 $yellow		Usage: perl $0 <run_folder> <step_number> $normal
 
@@ -51,12 +50,13 @@ die $usage unless ($step_number >=0)&&(($step_number <= 17) || ($step_number >= 
 
 #####################################################################################
 # values need to be modified to adapt to local environment
-my $email = "scao\@wustl\.edu";
+open(my $fwdFile, "~/.forward");
+my $email = <$fwdFile>;
 
 # software path
 #my $cd_hit = "/gscuser/mboolcha/software/cdhit/cd-hit-est";
 my $repeat_masker = "RepeatMasker";
-my $blastn = "/gscuser/scao/tools/ncbi-blast+/bin/blastn";
+my $blastn = "blastn";
 #my $blastx = "/gscuser/scao/tools/software/ncbi-blast+/bin/blastx";
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -65,8 +65,8 @@ my $blastn = "/gscuser/scao/tools/ncbi-blast+/bin/blastn";
 #my $db_BX = "/gscuser/scao/gc3027/nr/nr";
 #my $bwa_ref = "/gscuser/scao/gc3027/fasta/virus/virusdb_082414.fa";
 
-my $db_BN = "/gscmnt/gc3027/dinglab/medseq/nt/nt";
-my $db_BX = "/gscmnt/gc3027/dinglab/medseq/nr/nr";
+my $db_BN = "nt";
+my $db_BX = "nr";
 my $bwa_ref = "/gscmnt/gc3027/dinglab/medseq/fasta/nt012414_RE_Split/nt012414_virus_abbr_cdhit98.fa";
 
 # reference genome taxonomy classification and database location.
@@ -107,7 +107,7 @@ my $file_number_of_Blast_N = 100; #default
 #my $file_number_of_Blast_X = 200; #default
 
 #store job files here
-my $HOME1="/gscmnt/gc2524/dinglab";
+my $HOME1="~/";
 
 #store job files here
 if (! -d $HOME1."/tmp") {
@@ -124,7 +124,7 @@ my $lsf_file_dir = $HOME1."/SGE_DIR";
 # obtain script path
 my $run_script_path = `dirname $0`;
 chomp $run_script_path;
-$run_script_path = "/usr/bin/perl ".$run_script_path."/";
+$run_script_path = "/usr/bin/env perl ".$run_script_path."/";
 
 my $hold_RM_job = "norm"; 
 my $current_job_file = "";#cannot be empty
@@ -269,18 +269,18 @@ if ($step_number < 14 || $step_number>=22) {
 if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 
 	print $yellow, "Submitting jobs for generating the report for the run ....",$normal, "\n";
-	$hold_job_file=$current_job_file; 
+	$hold_job_file=qx(squeue -hn $current_job_file -o"%i");
 	$current_job_file = "Run_report_".$$.".sh"; 
 	open(REPRUN, ">$job_files_dir/$current_job_file") or die $!;
 	print REPRUN "#!/bin/bash\n";
-    print REPRUN "#BSUB -n 1\n";
-    print REPRUN "#BSUB -R \"rusage[mem=40000]\"","\n";
-    print REPRUN "#BSUB -M 40000000\n";
-    #print REPRUN "#BSUB -q ding-lab\n";
-	print REPRUN "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print REPRUN "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print REPRUN "#BSUB -J $current_job_file\n";
-	print REPRUN "#BSUB -w \"$hold_job_file\"","\n";
+
+    print REPRUN "#SBATCH -c 1\n";
+    print REPRUN "#SBATCH --mem 40G\n";
+    #print REPRUN "#SBATCH -p ding-lab\n";
+	print REPRUN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print REPRUN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print REPRUN "#SBATCH -J $current_job_file\n";
+	print REPRUN "#SBATCH -d after:$hold_job_file","\n";
 	
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
@@ -310,7 +310,7 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 	print REPRUN "fi\n";
 	close REPRUN;
 	close REPRUN;
-    $bsub_com = "bsub < $job_files_dir/$current_job_file\n";
+    $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#$bsub_com = "qsub -V -P long -hold_jid $working_name -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 
@@ -320,18 +320,18 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 # send email to notify the finish of the analysis
 if (($step_number == 0) || ($step_number == 15) || ($step_number>=22)) {
 	print $yellow, "Submitting the job for sending an email when the run finishes ",$sample_name, "...",$normal, "\n";
-	$hold_job_file = $current_job_file;
+	$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
 	$current_job_file = "Email_run_".$$.".sh";
 	open(EMAIL, ">$job_files_dir/$current_job_file") or die $!;
 	print EMAIL "#!/bin/bash\n";
-    print EMAIL "#BSUB -n 1\n";
-    print EMAIL "#BSUB -o $lsf_file_dir","\n";
-    print EMAIL "#BSUB -e $lsf_file_dir","\n";
-    print EMAIL "#BSUB -J $current_job_file\n";
-	print EMAIL "#BSUB -w \"$hold_job_file\"","\n";	
+    print EMAIL "#SBATCH -c 1\n";
+    print EMAIL "#SBATCH -o $lsf_file_dir","\n";
+    print EMAIL "#SBATCH -e $lsf_file_dir","\n";
+    print EMAIL "#SBATCH -J $current_job_file\n";
+	print EMAIL "#SBATCH -d after:$hold_job_file","\n";	
 	print EMAIL $run_script_path."send_email.pl ".$run_dir." ".$email."\n";
 	close EMAIL;
-    $bsub_com = "bsub < $job_files_dir/$current_job_file\n";
+    $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#$bsub_com = "qsub -V -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -405,12 +405,11 @@ sub bsub_bwa{
 
     open(BWA, ">$job_files_dir/$current_job_file") or die $!;
     print BWA "#!/bin/bash\n";
-    print BWA "#BSUB -n 1\n";
-    print BWA "#BSUB -R \"rusage[mem=20000]\"","\n";
-    print BWA "#BSUB -M 20000000\n";
-    print BWA "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print BWA "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print BWA "#BSUB -J $current_job_file\n";
+    print BWA "#SBATCH -c 1\n";
+    print BWA "#SBATCH --mem 20G\n";
+    print BWA "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print BWA "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print BWA "#SBATCH -J $current_job_file\n";
     print BWA "BWA_IN=".$sample_full_path."/".$sample_name.".bam\n";
     print BWA "BWA_fq=".$sample_full_path."/".$sample_name.".fq\n";
     print BWA "BWA_sai=".$sample_full_path."/".$sample_name.".sai\n";
@@ -447,7 +446,7 @@ sub bsub_bwa{
     print BWA "     ".$run_script_path."trim_readid.pl \${BWA_fa} \${BWA_fa}.cdhit_out\n";
     print BWA "   fi\n";
     close BWA;
-    $bsub_com = "bsub < $job_files_dir/$current_job_file\n";
+    $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
     system ( $bsub_com );
 }
 
@@ -459,20 +458,19 @@ sub split_for_RepeatMasker {
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 	$current_job_file = "j2_".$sample_name."_RM_split_".$$.".sh";
 	open(RMSPLIT, ">$job_files_dir/$current_job_file") or die $!;
 	print RMSPLIT "#!/bin/bash\n";
-	print RMSPLIT "#BSUB -n 1\n";
-    #print RMSPLIT "#BSUB -q ding-lab\n";
-	print RMSPLIT "#BSUB -R \"rusage[mem=10000]\"","\n";
-    print RMSPLIT "#BSUB -M 10000000\n";
-    print RMSPLIT "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print RMSPLIT "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print RMSPLIT "#BSUB -J $current_job_file\n";
+	print RMSPLIT "#SBATCH -c 1\n";
+    #print RMSPLIT "#SBATCH -p ding-lab\n";
+    print RMSPLIT "#SBATCH --mem 10G\n";
+    print RMSPLIT "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print RMSPLIT "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print RMSPLIT "#SBATCH -J $current_job_file\n";
 	print RMSPLIT "RMSPLIT_IN=".$sample_full_path."/".$sample_name.".fa\n";
-	print RMSPLIT "#BSUB -w \"$hold_job_file\"","\n";	
+	print RMSPLIT "#SBATCH -d after:$hold_job_file","\n";	
 	#####################
 	print RMSPLIT "RM_DIR=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
 	print RMSPLIT "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -500,7 +498,7 @@ sub split_for_RepeatMasker {
 	print RMSPLIT "	done\n";
 	print RMSPLIT "fi\n";
 	close RMSPLIT;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";	
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";	
 	#$bsub_com = "qsub -V -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -513,20 +511,18 @@ sub submit_job_array_RM {
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 	$current_job_file = "j3_".$sample_name."_RM_".$$.".sh";
 	open (RM, ">$job_files_dir/$current_job_file") or die $!;
 	print RM "#!/bin/bash\n";
-	print RM "#BSUB -n 1\n";
-	#print RM "#BSUB -q ding-lab\n";
-	print RM "#BSUB -R \"span[hosts=1] rusage[mem=10000]\"","\n";
-    #print RM "#BSUB -R \"rusage[mem=40000]\"","\n";
-    print RM "#BSUB -M 10000000\n";
-    print RM "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print RM "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print RM "#BSUB -J $current_job_file\[1-$file_number_of_RepeatMasker\]\n";
-	print RM "#BSUB -w \"$hold_job_file\"","\n";	
+	print RM "#SBATCH -c 1\n";
+	#print RM "#SBATCH -p ding-lab\n";
+    print RM "#SBATCH --mem 10G\n";
+    print RM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print RM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print RM "#SBATCH -J $current_job_file\[1-$file_number_of_RepeatMasker\]\n";
+	print RM "#SBATCH -d after:$hold_job_file","\n";	
 	print RM "RM_IN=".$sample_full_path."/".$sample_name.".fa\n";
 	#####################
 	print RM "RM_dir=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
@@ -556,7 +552,7 @@ sub submit_job_array_RM {
 	print RM "	fi\n";
 	print RM "fi\n";
 	close RM;
-    $bsub_com = "bsub < $job_files_dir/$current_job_file\n";
+    $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#print $bsub_com, "\n";
         #$bsub_com = "qsub -V -l h_vmem=4G  -hold_jid $hold_job_file,$hold_RM_job -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com)
@@ -569,18 +565,17 @@ sub seq_QC {
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
 	}
 	$current_job_file = "j4_".$sample_name."_QC_".$$.".sh";
 	open(QC, ">$job_files_dir/$current_job_file") or die $!;
 	print QC "#!/bin/bash\n";
-    print QC "#BSUB -n 1\n";
-    print QC "#BSUB -R \"rusage[mem=10000]\"","\n";
-    print QC "#BSUB -M 10000000\n";
-    print QC "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print QC "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print QC "#BSUB -J $current_job_file\n";
-	print QC "#BSUB -w \"$hold_job_file\"","\n";	
+    print QC "#SBATCH -c 1\n";
+    print QC "#SBATCH --mem 10G\n";
+    print QC "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print QC "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print QC "#SBATCH -J $current_job_file\n";
+	print QC "#SBATCH -d after:$hold_job_file","\n";	
 	#####################
 	print QC "SAMPLE_DIR=".$sample_full_path."\n";
 	print QC "QC_OUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n\n";
@@ -609,7 +604,7 @@ sub seq_QC {
     print QC "	done\n";
 	print QC "fi\n";
 	close QC;
-    $bsub_com = "bsub < $job_files_dir/$current_job_file\n";
+    $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -622,19 +617,18 @@ sub split_for_blast_RefG{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 
 	$current_job_file = "j5_".$sample_name."_RefG_split_".$$.".sh";
 	open(RefGS, ">$job_files_dir/$current_job_file") or die $!;
 	print RefGS "#!/bin/bash\n";
-	print RefGS "#BSUB -n 1\n";
-    print RefGS "#BSUB -R \"rusage[mem=10000]\"","\n";
-    print RefGS "#BSUB -M 10000000\n";
-    print RefGS "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print RefGS "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print RefGS "#BSUB -J $current_job_file\n";
-	print RefGS "#BSUB -w \"$hold_job_file\"","\n";	
+	print RefGS "#SBATCH -c 1\n";
+    print RefGS "#SBATCH --mem 10G\n";
+    print RefGS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print RefGS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print RefGS "#SBATCH -J $current_job_file\n";
+	print RefGS "#SBATCH -d after:$hold_job_file","\n";	
 	############################
 	print RefGS "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	print RefGS "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -662,7 +656,7 @@ sub split_for_blast_RefG{
 	print RefGS "	done\n";
 	print RefGS "fi\n";
 	close RefGS;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -674,19 +668,18 @@ sub submit_job_array_blast_RefG{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 
 	$current_job_file = "j6_".$sample_name."_BRefG_".$$.".sh";
 	open (RefG, ">$job_files_dir/$current_job_file") or die $!;
 	print RefG "#!/bin/bash\n";
-	print RefG "#BSUB -n 1\n";
-    print RefG "#BSUB -R \"span[hosts=1] rusage[mem=20000]\"","\n";
-    print RefG "#BSUB -M 20000000\n";
-    print RefG "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print RefG "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print RefG "#BSUB -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
-	print RefG "#BSUB -w \"$hold_job_file\"","\n";	
+	print RefG "#SBATCH -c 1\n";
+    print RefG "#SBATCH --mem 20G\n";
+    print RefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print RefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print RefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
+	print RefG "#SBATCH -d after:$hold_job_file","\n";	
 	
 	####################
 	print RefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
@@ -720,7 +713,7 @@ sub submit_job_array_blast_RefG{
 	print RefG "	fi\n";
 	print RefG "fi";
 	close RefG;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -l h_vmem=10G -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -732,7 +725,7 @@ sub parse_blast_RefG{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
 	}
 
    # $current_job_file = "j10_".$sample_name."_PBN_".$$.".sh";
@@ -747,13 +740,12 @@ sub parse_blast_RefG{
 	$current_job_file = "j7_".$sample_name."_PRefG_".$$.".sh";
 	open (PRefG, ">$job_files_dir/$current_job_file") or die $!;
 	print PRefG "#!/bin/bash\n";
-	print PRefG "#BSUB -n 1\n";
-    print PRefG "#BSUB -R \"rusage[mem=10000]\"","\n";
-    print PRefG "#BSUB -M 10000000\n";
-    print PRefG "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print PRefG "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print PRefG "#BSUB -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
-	print PRefG "#BSUB -w \"$hold_job_file\"","\n";	
+	print PRefG "#SBATCH -c 1\n";
+    print PRefG "#SBATCH --mem 10G\n";
+    print PRefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print PRefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print PRefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
+	print PRefG "#SBATCH -d after:$hold_job_file","\n";	
 	#################################
 	print PRefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	#print PRefG "#\$ -t 1-$file_number_of_Blast_Ref_Genome:1","\n";#must be a decimal number
@@ -790,7 +782,7 @@ sub parse_blast_RefG{
 	print PRefG "	fi\n";
 	print PRefG "fi";
 	close PRefG;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 	#}
@@ -803,19 +795,18 @@ sub pool_split_for_blast_N{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 
 	$current_job_file = "j8_".$sample_name."_BN_split_".$$.".sh";
 	open(BNS, ">$job_files_dir/$current_job_file") or die $!;
 	print BNS "#!/bin/bash\n";
-	print BNS "#BSUB -n 1\n";
-    print BNS "#BSUB -R \"rusage[mem=10000]\"","\n";
-    print BNS "#BSUB -M 10000000\n";
-    print BNS "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print BNS "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print BNS "#BSUB -J $current_job_file\n";
-	print BNS "#BSUB -w \"$hold_job_file\"","\n";	
+	print BNS "#SBATCH -c 1\n";
+    print BNS "#SBATCH --mem 10G\n";
+    print BNS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print BNS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print BNS "#SBATCH -J $current_job_file\n";
+	print BNS "#SBATCH -d after:$hold_job_file","\n";	
 	############################
 	print BNS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	print BNS "SAMPLE_DIR=".$sample_full_path."\n";
@@ -841,7 +832,7 @@ sub pool_split_for_blast_N{
 	print BNS '	CHECK=$?',"\n";
 	print BNS "done\n";
 	close BNS;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -853,7 +844,7 @@ sub submit_job_array_blast_N{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
 	}
 
 	my $BND=$sample_full_path."/".$sample_name.".".$BLAST_NT_DIR_SUFFIX;
@@ -869,13 +860,12 @@ sub submit_job_array_blast_N{
 	$current_job_file = "j9_".$sample_name."_BN_".$$.".sh";
 	open (BN, ">$job_files_dir/$current_job_file") or die $!;
 	print BN "#!/bin/bash\n";
-	print BN "#BSUB -n 1\n";
-    print BN "#BSUB -R \"span[hosts=1] rusage[mem=40000]\"","\n";
-    print BN "#BSUB -M 40000000\n";
-    print BN "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print BN "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print BN "#BSUB -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-	print BN "#BSUB -w \"$hold_job_file\"","\n";	
+	print BN "#SBATCH -c 1\n";
+    print BN "#SBATCH --mem 40G\n";
+    print BN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print BN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print BN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
+	print BN "#SBATCH -d after:$hold_job_file","\n";	
 	#################################
 	print BN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print BN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number, the value must be determined when this job file is generated. cannot be a variable
@@ -916,7 +906,7 @@ sub submit_job_array_blast_N{
 	print BN "	fi\n";
 	print BN "fi";
 	close BN;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -l h_vmem=10G -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
     #}
@@ -929,7 +919,7 @@ sub parse_blast_N{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 
 	$current_job_file = "j10_".$sample_name."_PBN_".$$.".sh";
@@ -943,13 +933,12 @@ sub parse_blast_N{
     #exit(2); 	
 	open (PBN, ">$job_files_dir/$current_job_file") or die $!;
 	print PBN "#!/bin/bash\n";
-	print PBN "#BSUB -n 1\n";
-    print PBN "#BSUB -R \"rusage[mem=10000]\"","\n";
-    print PBN "#BSUB -M 10000000\n";
-    print PBN "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print PBN "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print PBN "#BSUB -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-	print PBN "#BSUB -w \"$hold_job_file\"","\n";	
+	print PBN "#SBATCH -c 1\n";
+    print PBN "#SBATCH --mem 10G\n";
+    print PBN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print PBN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print PBN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
+	print PBN "#SBATCH -d after:$hold_job_file","\n";	
 	#################################
 	print PBN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -986,7 +975,7 @@ sub parse_blast_N{
 	print PBN "	fi\n";
 	print PBN "fi";
 	close PBN;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -999,18 +988,17 @@ sub blast_S{
         if ($step_by_step) {
                 $hold_job_file = "";
         }else{
-                $hold_job_file = $current_job_file;
+                $hold_job_file = qx(squeue -hn $current_job_file -o"%i");
         }
         $current_job_file = "j11_".$sample_name."_blastS_".$$.".sh";
         open (PS, ">$job_files_dir/$current_job_file") or die $!;
         print PS "#!/bin/bash\n";
-        print PS "#BSUB -n 1\n";
-        print PS "#BSUB -R \"rusage[mem=10000]\"","\n";
-        print PS "#BSUB -M 10000000\n";
-        print PS "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-        print PS "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-        print PS "#BSUB -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-        print PS "#BSUB -w \"$hold_job_file\"","\n";
+        print PS "#SBATCH -c 1\n";
+        print PS "#SBATCH --mem 10G\n";
+        print PS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+        print PS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+        print PS "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
+        print PS "#SBATCH -d after:$hold_job_file","\n";
         #################################
         print PS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
         #print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -1047,7 +1035,7 @@ sub blast_S{
         print PS "     fi\n";
         print PS "fi";
         close PS;
-        $bsub_com = "bsub < $job_files_dir/$current_job_file";
+        $bsub_com = "sbatch  $job_files_dir/$current_job_file";
         #$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
         system ($bsub_com);
 
@@ -1061,19 +1049,18 @@ sub report_for_each_sample{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 
 	$current_job_file = "j12_".$sample_name."_Rep_".$$.".sh";
 	open(REP, ">$job_files_dir/$current_job_file") or die $!;
 	print REP "#!/bin/bash\n";
-	print REP "#BSUB -n 1\n";
-    print REP "#BSUB -R \"rusage[mem=40000]\"","\n";
-    print REP "#BSUB -M 40000000\n";
-    print REP "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print REP "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print REP "#BSUB -J $current_job_file\n";
-	print REP "#BSUB -w \"$hold_job_file\"","\n";	
+	print REP "#SBATCH -c 1\n";
+    print REP "#SBATCH --mem 40G\n";
+    print REP "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print REP "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print REP "#SBATCH -J $current_job_file\n";
+	print REP "#SBATCH -d after:$hold_job_file","\n";	
 	############################
 	print REP "INPUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n";#RepeatMasker QC output
 	print REP "REPORT=".$sample_full_path."/".$sample_name.".gi.AssignmentReport\n";
@@ -1099,7 +1086,7 @@ sub report_for_each_sample{
 	print REP "	done\n";
 	print REP "fi\n";
 	close REP;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
@@ -1112,20 +1099,19 @@ sub summary_for_each_sample{
 	if ($step_by_step) {
 		$hold_job_file = "";
 	}else{
-		$hold_job_file = $current_job_file;
+		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
 	}
 
 	$current_job_file = "j13_".$sample_name."_Sum_".$$.".sh";
 
 	open(SUM, ">$job_files_dir/$current_job_file") or die $!;
 	print SUM "#!/bin/bash\n";
-	print SUM "#BSUB -n 1\n";
-    print SUM "#BSUB -R \"rusage[mem=40000]\"","\n";
-    print SUM "#BSUB -M 40000000\n";
-    print SUM "#BSUB -o $lsf_file_dir","/","$current_job_file.out\n";
-    print SUM "#BSUB -e $lsf_file_dir","/","$current_job_file.err\n";
-    print SUM "#BSUB -J $current_job_file\n";
-	print SUM "#BSUB -w \"$hold_job_file\"","\n";	
+	print SUM "#SBATCH -c 1\n";
+    print SUM "#SBATCH --mem 40G\n";
+    print SUM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print SUM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
+    print SUM "#SBATCH -J $current_job_file\n";
+	print SUM "#SBATCH -d after:$hold_job_file","\n";	
 	############################
 	print SUM "OUTPUT=".$sample_full_path."/".$sample_name.".gi.AssignmentSummary\n";
 	print SUM "BAD_SEQ=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.badSeq\n\n"; #output of RepeatMasker
@@ -1151,7 +1137,7 @@ sub summary_for_each_sample{
 	print SUM "	done\n";
 	print SUM "fi\n";
 	close SUM;
-	$bsub_com = "bsub < $job_files_dir/$current_job_file";
+	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -N $working_name -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
 	system ($bsub_com);
 }
