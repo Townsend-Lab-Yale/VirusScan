@@ -12,6 +12,8 @@ my $purple = "\e[35m";
 my $cyan = "\e[36m";
 my $normal = "\e[0m"; 
 
+my $version = "sgg0";
+
 #usage information
 (my $usage = <<OUT) =~ s/\t+//g;
 This script will run the virus discovery pipeline on slurm cluster.
@@ -50,7 +52,8 @@ die $usage unless ($step_number >=0)&&(($step_number <= 17) || ($step_number >= 
 
 #####################################################################################
 # values need to be modified to adapt to local environment
-open(my $fwdFile, "~/.forward");
+my $HOME = $ENV{HOME};
+open(my $fwdFile, $HOME."/.forward");
 my $email = <$fwdFile>;
 
 # software path
@@ -67,7 +70,8 @@ my $blastn = "blastn";
 
 my $db_BN = "nt";
 my $db_BX = "nr";
-my $bwa_ref = "/gscmnt/gc3027/dinglab/medseq/fasta/nt012414_RE_Split/nt012414_virus_abbr_cdhit98.fa";
+my $genomes_dir = "/ysm-gpfs/pi/townsend/genomes";
+my $bwa_ref = $genomes_dir."/nt012414_virus_abbr_cdhit98.fa";
 
 # reference genome taxonomy classification and database location.
 # It's better to change $refrence_genome_taxonomy and $reference_genome based on the data being analyzed.
@@ -83,11 +87,10 @@ my $reference_genome = "";
 
 $refrence_genome_taxonomy = "Homo";
 
-$reference_genome = "/gscmnt/gc3027/dinglab/medseq/human70.37/humandnacdna.fa";
+$reference_genome = $genomes_dir."/human_g1k_v37.fasta";  # orig "/.../medseq/human70.37/humandnacdna.fa";
 
 #####################################################################################
 # everything else below should be automated
-my $HOME = $ENV{HOME};
 my $working_name= (split(/\//,$run_dir))[-2];
 
 # To run jobs faster, split large fasta files to small ones. Split to specific number of 
@@ -107,7 +110,7 @@ my $file_number_of_Blast_N = 100; #default
 #my $file_number_of_Blast_X = 200; #default
 
 #store job files here
-my $HOME1="~/";
+my $HOME1=$HOME;
 
 #store job files here
 if (! -d $HOME1."/tmp") {
