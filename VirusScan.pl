@@ -283,7 +283,7 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 	print REPRUN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REPRUN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REPRUN "#SBATCH -J $current_job_file\n";
-	print REPRUN "#SBATCH -d after:$hold_job_file","\n";
+	print REPRUN "#SBATCH -d after:".$hold_job_file."\n";
 	
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
@@ -331,7 +331,7 @@ if (($step_number == 0) || ($step_number == 15) || ($step_number>=22)) {
     print EMAIL "#SBATCH -o $lsf_file_dir","\n";
     print EMAIL "#SBATCH -e $lsf_file_dir","\n";
     print EMAIL "#SBATCH -J $current_job_file\n";
-	print EMAIL "#SBATCH -d after:$hold_job_file","\n";	
+	print EMAIL "#SBATCH -d after:".$hold_job_file."\n";
 	print EMAIL $run_script_path."send_email.pl ".$run_dir." ".$email."\n";
 	close EMAIL;
     $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
@@ -432,12 +432,12 @@ sub bsub_bwa{
 	#0x800: supplementary alignment
     #H: Hard clipping
 	#S: Soft clipping
-	print BWA "samtools view -h \${BWA_IN} | perl -ne \'\$line=\$_; \@ss=split(\"\\t\",\$line); \$flag=\$ss[1]; \$cigar=\$ss[5]; if(\$ss[0]=~/^\@/ || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && ((\$flag & 0x4) || (\$cigar=~/S/))) || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && (\$ss[2]=~/^gi/))) { print \$line;}\' | samtools view -Sb - | bamtools convert -format fastq > \${BWA_fq} \&","\n";
+	print BWA "samtools view -h \${BWA_IN} | perl -ne \'\$line=\$_; \@ss=split(\"\\t\",\$line); \$flag=\$ss[1]; \$cigar=\$ss[5]; if(\$ss[0]=~/^\@/ || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && ((\$flag & 0x4) || (\$cigar=~/S/))) || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && (\$ss[2]=~/^gi/))) { print \$line;}\' | samtools view -u - | bedtools bamtofastq -i - -fq \${BWA_fq} \&","\n";
     #print BWA "bwa aln $bwa_ref -b0 \${BWA_IN} > \${BWA_sai} \&","\n";	
     print BWA "bwa aln $bwa_ref \${BWA_fq} > \${BWA_sai}","\n";
     print BWA 'rm ${BWA_fq}',"\n";
 	print BWA "mkfifo \${BWA_fq}","\n";
-    print BWA "samtools view -h \${BWA_IN} | perl -ne \'\$line=\$_; \@ss=split(\"\\t\",\$line); \$flag=\$ss[1]; \$cigar=\$ss[5]; if(\$ss[0]=~/^\@/ || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && ((\$flag & 0x4) || (\$cigar=~/S/))) || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && (\$ss[2]=~/^gi/))) { print \$line;}\' | samtools view -Sb - | bamtools convert -format fastq > \${BWA_fq} \&","\n";
+    print BWA "samtools view -h \${BWA_IN} | perl -ne \'\$line=\$_; \@ss=split(\"\\t\",\$line); \$flag=\$ss[1]; \$cigar=\$ss[5]; if(\$ss[0]=~/^\@/ || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && ((\$flag & 0x4) || (\$cigar=~/S/))) || (!((\$flag & 0x100) || (\$flag & 0x800) || (\$cigar=~/H/)) && (\$ss[2]=~/^gi/))) { print \$line;}\' | samtools view -u - | bedtools bamtofastq -i - -fq \${BWA_fq} \&","\n";
 	#print BWA "samtools view -h \${BWA_IN} | gawk \'{if (substr(\$1,1,1)==\"\@\" || (and(\$2,0x4) || and(\$2,0x8) )) print}\' | samtools view -Sb - | bamtools convert -format fastq > \${BWA_fq} \&","\n";
 	print BWA "bwa samse $bwa_ref \${BWA_sai} \${BWA_fq} | grep -v \@SQ | perl -ne \'\$line=\$_; \@ss=split(\"\\t\",\$line); if(\$ss[2]=~/^gi/) { print \$line; }\' > \${BWA_mapped}","\n";
 	print BWA "     ".$run_script_path."get_fasta_from_bam_filter.pl \${BWA_mapped} \${BWA_fa}\n";
@@ -473,7 +473,7 @@ sub split_for_RepeatMasker {
     print RMSPLIT "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RMSPLIT "#SBATCH -J $current_job_file\n";
 	print RMSPLIT "RMSPLIT_IN=".$sample_full_path."/".$sample_name.".fa\n";
-	print RMSPLIT "#SBATCH -d after:$hold_job_file","\n";	
+	print RMSPLIT "#SBATCH -d after:".$hold_job_file."\n";
 	#####################
 	print RMSPLIT "RM_DIR=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
 	print RMSPLIT "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -525,7 +525,7 @@ sub submit_job_array_RM {
     print RM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RM "#SBATCH -J $current_job_file\[1-$file_number_of_RepeatMasker\]\n";
-	print RM "#SBATCH -d after:$hold_job_file","\n";	
+	print RM "#SBATCH -d after:".$hold_job_file."\n";
 	print RM "RM_IN=".$sample_full_path."/".$sample_name.".fa\n";
 	#####################
 	print RM "RM_dir=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
@@ -578,7 +578,7 @@ sub seq_QC {
     print QC "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print QC "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print QC "#SBATCH -J $current_job_file\n";
-	print QC "#SBATCH -d after:$hold_job_file","\n";	
+	print QC "#SBATCH -d after:".$hold_job_file."\n";
 	#####################
 	print QC "SAMPLE_DIR=".$sample_full_path."\n";
 	print QC "QC_OUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n\n";
@@ -631,7 +631,7 @@ sub split_for_blast_RefG{
     print RefGS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RefGS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RefGS "#SBATCH -J $current_job_file\n";
-	print RefGS "#SBATCH -d after:$hold_job_file","\n";	
+	print RefGS "#SBATCH -d after:".$hold_job_file."\n";
 	############################
 	print RefGS "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	print RefGS "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -682,7 +682,7 @@ sub submit_job_array_blast_RefG{
     print RefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
-	print RefG "#SBATCH -d after:$hold_job_file","\n";	
+	print RefG "#SBATCH -d after:".$hold_job_file."\n";
 	
 	####################
 	print RefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
@@ -748,7 +748,7 @@ sub parse_blast_RefG{
     print PRefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print PRefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PRefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
-	print PRefG "#SBATCH -d after:$hold_job_file","\n";	
+	print PRefG "#SBATCH -d after:".$hold_job_file."\n";
 	#################################
 	print PRefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	#print PRefG "#\$ -t 1-$file_number_of_Blast_Ref_Genome:1","\n";#must be a decimal number
@@ -809,7 +809,7 @@ sub pool_split_for_blast_N{
     print BNS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print BNS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BNS "#SBATCH -J $current_job_file\n";
-	print BNS "#SBATCH -d after:$hold_job_file","\n";	
+	print BNS "#SBATCH -d after:".$hold_job_file."\n";
 	############################
 	print BNS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	print BNS "SAMPLE_DIR=".$sample_full_path."\n";
@@ -868,7 +868,7 @@ sub submit_job_array_blast_N{
     print BN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print BN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-	print BN "#SBATCH -d after:$hold_job_file","\n";	
+	print BN "#SBATCH -d after:".$hold_job_file."\n";
 	#################################
 	print BN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print BN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number, the value must be determined when this job file is generated. cannot be a variable
@@ -941,7 +941,7 @@ sub parse_blast_N{
     print PBN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print PBN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PBN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-	print PBN "#SBATCH -d after:$hold_job_file","\n";	
+	print PBN "#SBATCH -d after:".$hold_job_file."\n";
 	#################################
 	print PBN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -1001,7 +1001,7 @@ sub blast_S{
         print PS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
         print PS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
         print PS "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-        print PS "#SBATCH -d after:$hold_job_file","\n";
+        print PS "#SBATCH -d after:".$hold_job_file."\n";
         #################################
         print PS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
         #print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -1063,7 +1063,7 @@ sub report_for_each_sample{
     print REP "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REP "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REP "#SBATCH -J $current_job_file\n";
-	print REP "#SBATCH -d after:$hold_job_file","\n";	
+	print REP "#SBATCH -d after:".$hold_job_file."\n";
 	############################
 	print REP "INPUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n";#RepeatMasker QC output
 	print REP "REPORT=".$sample_full_path."/".$sample_name.".gi.AssignmentReport\n";
@@ -1114,7 +1114,7 @@ sub summary_for_each_sample{
     print SUM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print SUM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print SUM "#SBATCH -J $current_job_file\n";
-	print SUM "#SBATCH -d after:$hold_job_file","\n";	
+	print SUM "#SBATCH -d after:".$hold_job_file."\n";
 	############################
 	print SUM "OUTPUT=".$sample_full_path."/".$sample_name.".gi.AssignmentSummary\n";
 	print SUM "BAD_SEQ=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.badSeq\n\n"; #output of RepeatMasker
