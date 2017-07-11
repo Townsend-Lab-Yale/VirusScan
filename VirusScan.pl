@@ -55,6 +55,7 @@ die $usage unless ($step_number >=0)&&(($step_number <= 17) || ($step_number >= 
 my $HOME = $ENV{HOME};
 open(my $fwdFile, $HOME."/.forward");
 my $email = <$fwdFile>;
+my $job_rex = qr/\d+/;  # to match job id from sbatch output (e.g. "Submitted batch job 2653294")
 
 # software path
 #my $cd_hit = "/gscuser/mboolcha/software/cdhit/cd-hit-est";
@@ -272,7 +273,6 @@ if ($step_number < 14 || $step_number>=22) {
 if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 
 	print $yellow, "Submitting jobs for generating the report for the run ....",$normal, "\n";
-	$hold_job_file=qx(squeue -hn $current_job_file -o"%i");
 	$current_job_file = "Run_report_".$$.".sh"; 
 	open(REPRUN, ">$job_files_dir/$current_job_file") or die $!;
 	print REPRUN "#!/bin/bash\n";
@@ -283,7 +283,7 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 	print REPRUN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REPRUN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REPRUN "#SBATCH -J $current_job_file\n";
-	print REPRUN "#SBATCH -d after:".$hold_job_file."\n";
+	print REPRUN "#SBATCH -d afterok:".$hold_job_file."\n";
 	
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
@@ -315,7 +315,8 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 	close REPRUN;
     $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#$bsub_com = "qsub -V -P long -hold_jid $working_name -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 
 }
 
@@ -323,7 +324,6 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 # send email to notify the finish of the analysis
 if (($step_number == 0) || ($step_number == 15) || ($step_number>=22)) {
 	print $yellow, "Submitting the job for sending an email when the run finishes ",$sample_name, "...",$normal, "\n";
-	$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
 	$current_job_file = "Email_run_".$$.".sh";
 	open(EMAIL, ">$job_files_dir/$current_job_file") or die $!;
 	print EMAIL "#!/bin/bash\n";
@@ -331,12 +331,13 @@ if (($step_number == 0) || ($step_number == 15) || ($step_number>=22)) {
     print EMAIL "#SBATCH -o $lsf_file_dir","\n";
     print EMAIL "#SBATCH -e $lsf_file_dir","\n";
     print EMAIL "#SBATCH -J $current_job_file\n";
-	print EMAIL "#SBATCH -d after:".$hold_job_file."\n";
+	print EMAIL "#SBATCH -d afterok:".$hold_job_file."\n";
 	print EMAIL $run_script_path."send_email.pl ".$run_dir." ".$email."\n";
 	close EMAIL;
     $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#$bsub_com = "qsub -V -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 #######################################################################
 if ($step_number == 0) {
@@ -450,7 +451,8 @@ sub bsub_bwa{
     print BWA "   fi\n";
     close BWA;
     $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
-    system ( $bsub_com );
+    $_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
@@ -458,11 +460,7 @@ sub bsub_bwa{
 sub split_for_RepeatMasker {
 	#split file for RepeatMasker
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
+	print STDOUT "Building job 2: split_for_RepeatMasker\n";
 	$current_job_file = "j2_".$sample_name."_RM_split_".$$.".sh";
 	open(RMSPLIT, ">$job_files_dir/$current_job_file") or die $!;
 	print RMSPLIT "#!/bin/bash\n";
@@ -473,7 +471,7 @@ sub split_for_RepeatMasker {
     print RMSPLIT "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RMSPLIT "#SBATCH -J $current_job_file\n";
 	print RMSPLIT "RMSPLIT_IN=".$sample_full_path."/".$sample_name.".fa\n";
-	print RMSPLIT "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print RMSPLIT "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#####################
 	print RMSPLIT "RM_DIR=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
 	print RMSPLIT "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -503,7 +501,8 @@ sub split_for_RepeatMasker {
 	close RMSPLIT;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";	
 	#$bsub_com = "qsub -V -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
@@ -511,11 +510,7 @@ sub split_for_RepeatMasker {
 sub submit_job_array_RM {
 	#submit RepeatMasker job array
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
+	print STDOUT "Building job 3: submit_job_array_RM\n";
 	$current_job_file = "j3_".$sample_name."_RM_".$$.".sh";
 	open (RM, ">$job_files_dir/$current_job_file") or die $!;
 	print RM "#!/bin/bash\n";
@@ -525,7 +520,7 @@ sub submit_job_array_RM {
     print RM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RM "#SBATCH -J $current_job_file\[1-$file_number_of_RepeatMasker\]\n";
-	print RM "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print RM "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	print RM "RM_IN=".$sample_full_path."/".$sample_name.".fa\n";
 	#####################
 	print RM "RM_dir=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
@@ -558,18 +553,15 @@ sub submit_job_array_RM {
     $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#print $bsub_com, "\n";
         #$bsub_com = "qsub -V -l h_vmem=4G  -hold_jid $hold_job_file,$hold_RM_job -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com)
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
 
 sub seq_QC {
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
-	}
+	print STDOUT "Building job 4: seq_QC\n";
 	$current_job_file = "j4_".$sample_name."_QC_".$$.".sh";
 	open(QC, ">$job_files_dir/$current_job_file") or die $!;
 	print QC "#!/bin/bash\n";
@@ -578,12 +570,12 @@ sub seq_QC {
     print QC "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print QC "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print QC "#SBATCH -J $current_job_file\n";
-	print QC "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print QC "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#####################
 	print QC "SAMPLE_DIR=".$sample_full_path."\n";
 	print QC "QC_OUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n\n";
 	print QC "f_fa=".$sample_full_path."/".$sample_name.".fa\n";
-	print QC 'if [ ! -f $QC_OUT] && [ -s $f_fa]',"\n";
+	print QC 'if [ ! -f $QC_OUT ] && [ -s $f_fa ]',"\n";
 	print QC "then\n";
 	print QC "	".$run_script_path."SequenceQualityControl.pl ".$sample_full_path."\n";
 	print QC "	".$run_script_path."check_SequenceQualityControl.pl \${SAMPLE_DIR}\n";
@@ -609,7 +601,8 @@ sub seq_QC {
 	close QC;
     $bsub_com = "sbatch  $job_files_dir/$current_job_file\n";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
@@ -617,12 +610,7 @@ sub seq_QC {
 sub split_for_blast_RefG{
 	#split file for RefG blast
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
-
+	print STDOUT "Building job 5: split_for_blast_RefG\n";
 	$current_job_file = "j5_".$sample_name."_RefG_split_".$$.".sh";
 	open(RefGS, ">$job_files_dir/$current_job_file") or die $!;
 	print RefGS "#!/bin/bash\n";
@@ -631,7 +619,7 @@ sub split_for_blast_RefG{
     print RefGS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RefGS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RefGS "#SBATCH -J $current_job_file\n";
-	print RefGS "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print RefGS "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	############################
 	print RefGS "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	print RefGS "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -661,19 +649,15 @@ sub split_for_blast_RefG{
 	close RefGS;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
 
 sub submit_job_array_blast_RefG{
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
-
+	print STDOUT "Building job 6: submit_job_array_blast_RefG\n";
 	$current_job_file = "j6_".$sample_name."_BRefG_".$$.".sh";
 	open (RefG, ">$job_files_dir/$current_job_file") or die $!;
 	print RefG "#!/bin/bash\n";
@@ -682,7 +666,7 @@ sub submit_job_array_blast_RefG{
     print RefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
-	print RefG "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print RefG "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	
 	####################
 	print RefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
@@ -718,19 +702,15 @@ sub submit_job_array_blast_RefG{
 	close RefG;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -l h_vmem=10G -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
 
 sub parse_blast_RefG{
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
-	}
-
+	print STDOUT "Building job 7: parse_blast_RefG\n";
    # $current_job_file = "j10_".$sample_name."_PBN_".$$.".sh";
     my $BND=$sample_full_path."/".$sample_name.".".$BLAST_RefG_DIR_SUFFIX;
     #if	
@@ -748,7 +728,7 @@ sub parse_blast_RefG{
     print PRefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print PRefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PRefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
-	print PRefG "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print PRefG "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#################################
 	print PRefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	#print PRefG "#\$ -t 1-$file_number_of_Blast_Ref_Genome:1","\n";#must be a decimal number
@@ -787,7 +767,8 @@ sub parse_blast_RefG{
 	close PRefG;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 	#}
 }
 
@@ -795,12 +776,7 @@ sub parse_blast_RefG{
 
 sub pool_split_for_blast_N{
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
-
+	print STDOUT "Building job 8: pool_split_for_blast_N\n";
 	$current_job_file = "j8_".$sample_name."_BN_split_".$$.".sh";
 	open(BNS, ">$job_files_dir/$current_job_file") or die $!;
 	print BNS "#!/bin/bash\n";
@@ -809,7 +785,7 @@ sub pool_split_for_blast_N{
     print BNS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print BNS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BNS "#SBATCH -J $current_job_file\n";
-	print BNS "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print BNS "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	############################
 	print BNS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	print BNS "SAMPLE_DIR=".$sample_full_path."\n";
@@ -837,19 +813,15 @@ sub pool_split_for_blast_N{
 	close BNS;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
 
 sub submit_job_array_blast_N{
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i"); 
-	}
-
+	print STDOUT "Building job 9: submit_job_array_blast_N\n";
 	my $BND=$sample_full_path."/".$sample_name.".".$BLAST_NT_DIR_SUFFIX;
   
     #my $nn1=`tail $BND/*.out | grep Matrix | wc -l`;
@@ -868,7 +840,7 @@ sub submit_job_array_blast_N{
     print BN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print BN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-	print BN "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print BN "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#################################
 	print BN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print BN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number, the value must be determined when this job file is generated. cannot be a variable
@@ -911,7 +883,8 @@ sub submit_job_array_blast_N{
 	close BN;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -l h_vmem=10G -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
     #}
 }
 
@@ -919,12 +892,7 @@ sub submit_job_array_blast_N{
 
 sub parse_blast_N{
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
-
+	print STDOUT "Building job 10: parse_blast_N\n";
 	$current_job_file = "j10_".$sample_name."_PBN_".$$.".sh";
 	#my $BND=$sample_full_path."/".$sample_name.".".$BLAST_NT_DIR_SUFFIX;
 	#my $nn1=`tail $BND/*.out | grep Matrix | wc -l`;  
@@ -941,7 +909,7 @@ sub parse_blast_N{
     print PBN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print PBN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PBN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-	print PBN "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print PBN "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#################################
 	print PBN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -980,7 +948,8 @@ sub parse_blast_N{
 	close PBN;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
@@ -988,11 +957,7 @@ sub parse_blast_N{
 sub blast_S{
 
         my ($step_by_step) = @_;
-        if ($step_by_step) {
-                $hold_job_file = "";
-        }else{
-                $hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-        }
+        print STDOUT "Building job 11: blast_S\n";
         $current_job_file = "j11_".$sample_name."_blastS_".$$.".sh";
         open (PS, ">$job_files_dir/$current_job_file") or die $!;
         print PS "#!/bin/bash\n";
@@ -1001,7 +966,7 @@ sub blast_S{
         print PS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
         print PS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
         print PS "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
-        print PS "#SBATCH -d after:".$hold_job_file."\n";
+        if (! $step_by_step) { print PS "#SBATCH -d afterok:".$hold_job_file."\n"; }
         #################################
         print PS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
         #print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -1040,8 +1005,8 @@ sub blast_S{
         close PS;
         $bsub_com = "sbatch  $job_files_dir/$current_job_file";
         #$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-        system ($bsub_com);
-
+        $_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+		$hold_job_file = $& if m/$job_rex/;
 }
 
 
@@ -1049,12 +1014,7 @@ sub blast_S{
 
 sub report_for_each_sample{
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
-
+	print STDOUT "Building job 12: report_for_each_sample\n";
 	$current_job_file = "j12_".$sample_name."_Rep_".$$.".sh";
 	open(REP, ">$job_files_dir/$current_job_file") or die $!;
 	print REP "#!/bin/bash\n";
@@ -1063,7 +1023,7 @@ sub report_for_each_sample{
     print REP "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REP "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REP "#SBATCH -J $current_job_file\n";
-	print REP "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print REP "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	############################
 	print REP "INPUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n";#RepeatMasker QC output
 	print REP "REPORT=".$sample_full_path."/".$sample_name.".gi.AssignmentReport\n";
@@ -1091,7 +1051,8 @@ sub report_for_each_sample{
 	close REP;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 #####################################################################################
@@ -1099,12 +1060,7 @@ sub report_for_each_sample{
 sub summary_for_each_sample{
 
 	my ($step_by_step) = @_;
-	if ($step_by_step) {
-		$hold_job_file = "";
-	}else{
-		$hold_job_file = qx(squeue -hn $current_job_file -o"%i");
-	}
-
+	print STDOUT "Building job 13: summary_for_each_sample\n";
 	$current_job_file = "j13_".$sample_name."_Sum_".$$.".sh";
 
 	open(SUM, ">$job_files_dir/$current_job_file") or die $!;
@@ -1114,7 +1070,7 @@ sub summary_for_each_sample{
     print SUM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print SUM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print SUM "#SBATCH -J $current_job_file\n";
-	print SUM "#SBATCH -d after:".$hold_job_file."\n";
+	if (! $step_by_step) { print SUM "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	############################
 	print SUM "OUTPUT=".$sample_full_path."/".$sample_name.".gi.AssignmentSummary\n";
 	print SUM "BAD_SEQ=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.badSeq\n\n"; #output of RepeatMasker
@@ -1142,7 +1098,8 @@ sub summary_for_each_sample{
 	close SUM;
 	$bsub_com = "sbatch  $job_files_dir/$current_job_file";
 	#$bsub_com = "qsub -V -P long -N $working_name -hold_jid $hold_job_file -e $lsf_file_dir -o $lsf_file_dir $job_files_dir/$current_job_file\n";
-	system ($bsub_com);
+	$_ = qx($bsub_com);  # outputs string of form "Submitted batch job XXXXXXX"
+	$hold_job_file = $& if m/$job_rex/;
 }
 
 =add
