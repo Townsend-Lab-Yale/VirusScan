@@ -519,15 +519,16 @@ sub submit_job_array_RM {
     print RM "#SBATCH --mem 10G\n";
     print RM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
-    print RM "#SBATCH -J $current_job_file\[1-$file_number_of_RepeatMasker\]\n";
+    print RM "#SBATCH -J $current_job_file\n";
+	print RM "#SBATCH --array=1-$file_number_of_RepeatMasker\n";
 	if (! $step_by_step) { print RM "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	print RM "RM_IN=".$sample_full_path."/".$sample_name.".fa\n";
 	#####################
 	print RM "RM_dir=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
 	#print RM "#\$ -t 1-$file_number_of_RepeatMasker:1","\n";
-	print RM "RMOUT=",'${RM_dir}',"/".$sample_name.".fa.cdhit_out_file".'${LSB_JOBINDEX}'.".fa.masked","\n";
-	print RM "RMIN=",'${RM_dir}',"/".$sample_name.".fa.cdhit_out_file".'${LSB_JOBINDEX}',".fa\n";
-	print RM "RMOTHER=",'${RM_dir}',"/".$sample_name.".fa.cdhit_out_file".'${LSB_JOBINDEX}'.".fa.out","\n\n";	
+	print RM "RMOUT=",'${RM_dir}',"/".$sample_name.".fa.cdhit_out_file".'${SLURM_ARRAY_TASK_ID}'.".fa.masked","\n";
+	print RM "RMIN=",'${RM_dir}',"/".$sample_name.".fa.cdhit_out_file".'${SLURM_ARRAY_TASK_ID}',".fa\n";
+	print RM "RMOTHER=",'${RM_dir}',"/".$sample_name.".fa.cdhit_out_file".'${SLURM_ARRAY_TASK_ID}'.".fa.out","\n\n";	
 	print RM 'if [ -f $RMIN ]',"\n"; # input file exist
 	print RM "then\n";
 	print RM '  if [ ! -s $RMOUT ]',"\n"; # don't have RepeatMasker output ".out" file, means RepeatMasker never ran or finished
@@ -665,14 +666,15 @@ sub submit_job_array_blast_RefG{
     print RefG "#SBATCH --mem 20G\n";
     print RefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
-    print RefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
+    print RefG "#SBATCH -J $current_job_file\n";
+    print RefG "#SBATCH --array=1-$file_number_of_Blast_Ref_Genome\n";
 	if (! $step_by_step) { print RefG "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	
 	####################
 	print RefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	#print RefG "#\$ -t 1-$file_number_of_Blast_Ref_Genome:1","\n"; #the number must be a digital value in the .sh job file, cannot be calculated when the job submitted
-	print RefG "BlastRefGOUT=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${LSB_JOBINDEX}',".RefGblast.out\n";
-	print RefG "QUERY=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${LSB_JOBINDEX}'.".fa\n\n";
+	print RefG "BlastRefGOUT=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${SLURM_ARRAY_TASK_ID}',".RefGblast.out\n";
+	print RefG "QUERY=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${SLURM_ARRAY_TASK_ID}'.".fa\n\n";
 	print RefG 'if [ -s $QUERY ]',"\n"; #modified by song: check if a file is empty.
 	print RefG "then\n";
 	#if blast output file does not exist, do blast and check the completeness of output
@@ -727,14 +729,15 @@ sub parse_blast_RefG{
     print PRefG "#SBATCH --mem 10G\n";
     print PRefG "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print PRefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
-    print PRefG "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_Ref_Genome\]\n";
+    print PRefG "#SBATCH -J $current_job_file\n";
+    print PRefG "#SBATCH --array=1-$file_number_of_Blast_Ref_Genome\n";
 	if (! $step_by_step) { print PRefG "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#################################
 	print PRefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	#print PRefG "#\$ -t 1-$file_number_of_Blast_Ref_Genome:1","\n";#must be a decimal number
-	print PRefG "BlastRefGOUT=${sample_name}.fa.cdhit_out.masked.goodSeq_file".'${LSB_JOBINDEX}',".RefGblast.out\n";#name only, not full path
-	print PRefG "BlastRefGIN=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${LSB_JOBINDEX}'.".fa\n";#full path
-	print PRefG "PARSED=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${LSB_JOBINDEX}'.".RefGblast.parsed\n\n";
+	print PRefG "BlastRefGOUT=${sample_name}.fa.cdhit_out.masked.goodSeq_file".'${SLURM_ARRAY_TASK_ID}',".RefGblast.out\n";#name only, not full path
+	print PRefG "BlastRefGIN=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${SLURM_ARRAY_TASK_ID}'.".fa\n";#full path
+	print PRefG "PARSED=",'${RefG_DIR}',"/".$sample_name.".fa.cdhit_out.masked.goodSeq_file".'${SLURM_ARRAY_TASK_ID}'.".RefGblast.parsed\n\n";
 	print PRefG 'if [ -s $BlastRefGIN ]',"\n"; # change -f to -s 
 	print PRefG "then\n";
 	#if the parsed file does not exist, run parser and check the completeness of the parsed file
@@ -840,12 +843,13 @@ sub submit_job_array_blast_N{
     print BN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print BN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
+    print BN "#SBATCH --array=1-$file_number_of_Blast_N\n";
 	if (! $step_by_step) { print BN "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#################################
 	print BN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print BN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number, the value must be determined when this job file is generated. cannot be a variable
-	print BN "BlastNOUT=",'${BN_DIR}',"/",$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".blastn.out\n";#full path
-	print BN "QUERY=",'${BN_DIR}',"/".$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".fa\n\n";
+	print BN "BlastNOUT=",'${BN_DIR}',"/",$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".blastn.out\n";#full path
+	print BN "QUERY=",'${BN_DIR}',"/".$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".fa\n\n";
 	print BN 'if [ -s $QUERY ]',"\n"; #modified by song. check if the file is empty
 	print BN "then\n";
 	#if the output file does not exist, run and check the completeness of the output file
@@ -909,13 +913,14 @@ sub parse_blast_N{
     print PBN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print PBN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PBN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
+    print PBN "#SBATCH --array=1-$file_number_of_Blast_N\n";
 	if (! $step_by_step) { print PBN "#SBATCH -d afterok:".$hold_job_file."\n"; }
 	#################################
 	print PBN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
-	print PBN "BlastNOUT=",$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".blastn.out\n";#name only, not full path
-	print PBN "BlastNIN=",'${BN_DIR}',"/",$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".fa\n";#full path
-	print PBN "PARSED=",'${BN_DIR}',"/".$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".blastn.parsed\n\n";
+	print PBN "BlastNOUT=",$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".blastn.out\n";#name only, not full path
+	print PBN "BlastNIN=",'${BN_DIR}',"/",$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".fa\n";#full path
+	print PBN "PARSED=",'${BN_DIR}',"/".$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".blastn.parsed\n\n";
 	print PBN 'if [ -s $BlastNIN ]',"\n"; #song changed -f to -s; 
 	print PBN "then\n";
 	#if the parsed file does not exist, run parser and check the completeness of the parsed file
@@ -966,13 +971,14 @@ sub blast_S{
         print PS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
         print PS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
         print PS "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
+        print PS "#SBATCH --array=1-$file_number_of_Blast_N\n";
         if (! $step_by_step) { print PS "#SBATCH -d afterok:".$hold_job_file."\n"; }
         #################################
         print PS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
         #print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
-        print PS "BlastNparsed=",$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".blastn.parsed\n";#name only, not full path
-        print PS "BlastNIN=",'${BN_DIR}',"/",$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".fa\n";#full path
-        print PS "OUTPUT=",'${BN_DIR}',"/".$sample_name.".RefGfiltered.fa_file".'${LSB_JOBINDEX}',".blastn.summary\n\n";
+        print PS "BlastNparsed=",$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".blastn.parsed\n";#name only, not full path
+        print PS "BlastNIN=",'${BN_DIR}',"/",$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".fa\n";#full path
+        print PS "OUTPUT=",'${BN_DIR}',"/".$sample_name.".RefGfiltered.fa_file".'${SLURM_ARRAY_TASK_ID}',".blastn.summary\n\n";
         print PS 'if [ -s $BlastNIN ]',"\n"; #song changed -f to -s; 
         print PS "then\n";
         #if the parsed file does not exist, run parser and check the completeness of the parsed file
