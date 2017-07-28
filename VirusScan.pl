@@ -331,8 +331,8 @@ if (($step_number == 0) || ($step_number == 15) || ($step_number>=22)) {
 	open(EMAIL, ">$job_files_dir/$current_job_file") or die $!;
 	print EMAIL "#!/bin/bash\n";
     print EMAIL "#SBATCH -c 1\n";
-    print EMAIL "#SBATCH -o $lsf_file_dir","\n";
-    print EMAIL "#SBATCH -e $lsf_file_dir","\n";
+    print EMAIL "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
+    print EMAIL "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print EMAIL "#SBATCH -J $current_job_file\n";
 	print EMAIL "#SBATCH -d afterok:".$hold_job_file."\n";
 	print EMAIL $run_script_path."send_email.pl ".$run_dir." ".$email."\n";
