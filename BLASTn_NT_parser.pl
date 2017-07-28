@@ -22,10 +22,11 @@ my ($dir, $blastout) = @ARGV;
 
 ###################################################################################
 # This section needs to be modified to use local configuration
-my $database_dir = "/gscmnt/gc3027/info/medseq/taxdump_2014_01_08";
+my $database_dir = $ENV{'VIRUSSCAN_GENOMES_DIR'};
 
 # open a connection to mysql database
-my $dbh_mysql = DBI->connect("DBI:mysql:database=scao_taxondb;host=mysql1","scao", "asdf1234",{'RaiseError'=>1}) or die "Unable to connect $DBI::errstr\n";
+my $my_cnf = $ENV{'HOME'}.'/.my.cnf';
+my $dbh_mysql = DBI->connect("DBI:mysql:".$ENV{'VIRUSSCAN_TABLE'}.";mysql_read_default_file=$my_cnf", undef, undef, {'RaiseError'=>1}) or die "Unable to connect $DBI::errstr\n";
 
 ###################################################################################
 # Everhting below should not need modification
@@ -43,13 +44,13 @@ $outFile = $dir."/".$outFile;
 open (OUT, ">$outFile") or die "can not open file $outFile!\n";
 
 # create a tmp directory in the home directory if tmp does not exist
-if (! -d $HOME."/taxo") {
-        `mkdir $HOME"/taxo"`;
+if (! -d $database_dir."/taxo") {
+        `mkdir $database_dir"/taxo"`;
 }
 
 # get a Taxon from a Bio::DB::Taxonomy object
 my $dbh = Bio::DB::Taxonomy->new(-source => 'flatfile',
-		-directory=> "$HOME/taxo",
+		-directory=> "$database_dir/taxo",
 		-nodesfile=> "$database_dir/nodes.dmp",
 		-namesfile=> "$database_dir/names.dmp",
 		);
