@@ -106,7 +106,7 @@ my $file_number_of_RepeatMasker = 100; #default
 # the number of small fasta files to split to from a large file for Blast_Reference_Genome
 my $file_number_of_Blast_Ref_Genome = 100; #default
 # the number of small fasta files to split to from a large file for Blast_N
-my $file_number_of_Blast_N = 100; #default
+my $file_number_of_Blast_N = 10; #default. Require simultaneous db access.
 # the number of small fasta files to split to from a large file for Blast_X
 #my $file_number_of_Blast_X = 200; #default
 
