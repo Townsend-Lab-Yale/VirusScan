@@ -88,7 +88,7 @@ my $reference_genome = "";
 
 $refrence_genome_taxonomy = "Homo";
 
-$reference_genome = $genomes_dir."/human_g1k_v37.fasta";  # orig "/.../medseq/human70.37/humandnacdna.fa";
+$reference_genome = $genomes_dir."/humandnacdna";  # orig "/.../medseq/human70.37/humandnacdna.fa"
 
 #####################################################################################
 # everything else below should be automated
