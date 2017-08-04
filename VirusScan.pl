@@ -290,7 +290,7 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 	print REPRUN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REPRUN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REPRUN "#SBATCH -J $current_job_file\n";
-	if ($last_job_id && not $one_step) { print REPRUN "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id) { print REPRUN "#SBATCH -d afterok:".$last_job_id."\n"; }
 	
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
