@@ -290,7 +290,7 @@ if (($step_number == 0) || ($step_number == 14) || ($step_number>=22)) {
 	print REPRUN "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REPRUN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REPRUN "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print REPRUN "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print REPRUN "#SBATCH -d afterok:".$last_job_id."\n"; }
 	
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
 	print REPRUN "BAD_SEQ=fa.cdhit_out.masked.badSeq\n"; #output of RepeatMasker
@@ -469,7 +469,7 @@ sub bsub_bwa{
 
 sub split_for_RepeatMasker {
 	#split file for RepeatMasker
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 2: split_for_RepeatMasker\n";
 	$current_job_file = "j2_".$sample_name."_RM_split_".$$.".sh";
 	open(RMSPLIT, ">$job_files_dir/$current_job_file") or die $!;
@@ -480,7 +480,7 @@ sub split_for_RepeatMasker {
     print RMSPLIT "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RMSPLIT "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RMSPLIT "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print RMSPLIT "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print RMSPLIT "#SBATCH -d afterok:".$last_job_id."\n"; }
 	#####################
 	print RMSPLIT "RMSPLIT_IN=".$sample_full_path."/".$sample_name.".fa\n";
 	print RMSPLIT "RM_DIR=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
@@ -519,7 +519,7 @@ sub split_for_RepeatMasker {
 
 sub submit_job_array_RM {
 	#submit RepeatMasker job array
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 3: submit_job_array_RM\n";
 	$current_job_file = "j3_".$sample_name."_RM_".$$.".sh";
 	open (RM, ">$job_files_dir/$current_job_file") or die $!;
@@ -531,7 +531,7 @@ sub submit_job_array_RM {
     print RM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RM "#SBATCH -J $current_job_file\n";
 	print RM "#SBATCH --array=1-$file_number_of_RepeatMasker\n";
-	if ($last_job_id) { print RM "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print RM "#SBATCH -d afterok:".$last_job_id."\n"; }
 	print RM "RM_IN=".$sample_full_path."/".$sample_name.".fa\n";
 	#####################
 	print RM "RM_dir=".$sample_full_path."/".$sample_name.".$REPEAT_MASKER_DIR_SUFFIX\n";
@@ -571,7 +571,7 @@ sub submit_job_array_RM {
 #####################################################################################
 
 sub seq_QC {
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 4: seq_QC\n";
 	$current_job_file = "j4_".$sample_name."_QC_".$$.".sh";
 	open(QC, ">$job_files_dir/$current_job_file") or die $!;
@@ -581,7 +581,7 @@ sub seq_QC {
     print QC "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print QC "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print QC "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print QC "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print QC "#SBATCH -d afterok:".$last_job_id."\n"; }
 	#####################
 	print QC "SAMPLE_DIR=".$sample_full_path."\n";
 	print QC "QC_OUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n\n";
@@ -620,7 +620,7 @@ sub seq_QC {
 
 sub split_for_blast_RefG{
 	#split file for RefG blast
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 5: split_for_blast_RefG\n";
 	$current_job_file = "j5_".$sample_name."_RefG_split_".$$.".sh";
 	open(RefGS, ">$job_files_dir/$current_job_file") or die $!;
@@ -630,7 +630,7 @@ sub split_for_blast_RefG{
     print RefGS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print RefGS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RefGS "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print RefGS "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print RefGS "#SBATCH -d afterok:".$last_job_id."\n"; }
 	############################
 	print RefGS "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	print RefGS "SAMPLE_DIR=".$sample_full_path."\n\n";
@@ -667,7 +667,7 @@ sub split_for_blast_RefG{
 #####################################################################################
 
 sub submit_job_array_blast_RefG{
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 6: submit_job_array_blast_RefG\n";
 	$current_job_file = "j6_".$sample_name."_BRefG_".$$.".sh";
 	open (RefG, ">$job_files_dir/$current_job_file") or die $!;
@@ -678,7 +678,7 @@ sub submit_job_array_blast_RefG{
     print RefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print RefG "#SBATCH -J $current_job_file\n";
     print RefG "#SBATCH --array=1-$file_number_of_Blast_Ref_Genome\n";
-	if ($last_job_id) { print RefG "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print RefG "#SBATCH -d afterok:".$last_job_id."\n"; }
 	
 	####################
 	print RefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
@@ -721,7 +721,7 @@ sub submit_job_array_blast_RefG{
 #####################################################################################
 
 sub parse_blast_RefG{
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 7: parse_blast_RefG\n";
    # $current_job_file = "j10_".$sample_name."_PBN_".$$.".sh";
     my $BND=$sample_full_path."/".$sample_name.".".$BLAST_RefG_DIR_SUFFIX;
@@ -741,7 +741,7 @@ sub parse_blast_RefG{
     print PRefG "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PRefG "#SBATCH -J $current_job_file\n";
     print PRefG "#SBATCH --array=1-$file_number_of_Blast_Ref_Genome\n";
-	if ($last_job_id) { print PRefG "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print PRefG "#SBATCH -d afterok:".$last_job_id."\n"; }
 	#################################
 	print PRefG "RefG_DIR=".$sample_full_path."/".$sample_name.".$BLAST_RefG_DIR_SUFFIX\n";
 	#print PRefG "#\$ -t 1-$file_number_of_Blast_Ref_Genome:1","\n";#must be a decimal number
@@ -788,7 +788,7 @@ sub parse_blast_RefG{
 #####################################################################################
 
 sub pool_split_for_blast_N{
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 8: pool_split_for_blast_N\n";
 	$current_job_file = "j8_".$sample_name."_BN_split_".$$.".sh";
 	open(BNS, ">$job_files_dir/$current_job_file") or die $!;
@@ -798,7 +798,7 @@ sub pool_split_for_blast_N{
     print BNS "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print BNS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BNS "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print BNS "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print BNS "#SBATCH -d afterok:".$last_job_id."\n"; }
 	############################
 	print BNS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	print BNS "SAMPLE_DIR=".$sample_full_path."\n";
@@ -833,7 +833,7 @@ sub pool_split_for_blast_N{
 #####################################################################################
 
 sub submit_job_array_blast_N{
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 9: submit_job_array_blast_N\n";
 	my $BND=$sample_full_path."/".$sample_name.".".$BLAST_NT_DIR_SUFFIX;
   
@@ -854,7 +854,7 @@ sub submit_job_array_blast_N{
     print BN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print BN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
     print BN "#SBATCH --array=1-$file_number_of_Blast_N\n";
-	if ($last_job_id) { print BN "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print BN "#SBATCH -d afterok:".$last_job_id."\n"; }
 	#################################
 	print BN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print BN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number, the value must be determined when this job file is generated. cannot be a variable
@@ -905,11 +905,11 @@ sub submit_job_array_blast_N{
 #####################################################################################
 
 sub parse_blast_N{
-	# my ($step_by_step) = @_;
+	# my ($one_step) = @_;
 	print STDOUT "Building job 10: parse_blast_N\n";
 	$current_job_file = "j10_".$sample_name."_PBN_".$$.".sh";
 	# set dependencies. Two dependencies if this step run previously.
-	my $hold_str = ($last_pbn_job_id) ? join( ":", $last_job_id, $last_pbn_job_id ) : join( ":", $last_job_id );
+	my $hold_str = ($last_pbn_job_id) ? join( ":", $last_job_id, $last_pbn_job_id ) : $last_job_id;
 	#my $BND=$sample_full_path."/".$sample_name.".".$BLAST_NT_DIR_SUFFIX;
 	#my $nn1=`tail $BND/*.out | grep Matrix | wc -l`;  
     #my $nn2=`ls $BND/*.out | wc -l`; 
@@ -926,7 +926,7 @@ sub parse_blast_N{
     print PBN "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print PBN "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
     print PBN "#SBATCH --array=1-$file_number_of_Blast_N\n";
-	if ($last_job_id) { print PBN "#SBATCH -d afterok:".$hold_str."\n"; }
+	if ($hold_str) { print PBN "#SBATCH -d afterok:".$hold_str."\n"; }
 	#################################
 	print PBN "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
 	#print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -973,7 +973,7 @@ sub parse_blast_N{
 
 sub blast_S{
 
-        # my ($step_by_step) = @_;
+        my ($one_step) = @_;
         print STDOUT "Building job 11: blast_S\n";
         $current_job_file = "j11_".$sample_name."_blastS_".$$.".sh";
         open (PS, ">$job_files_dir/$current_job_file") or die $!;
@@ -984,7 +984,7 @@ sub blast_S{
         print PS "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
         print PS "#SBATCH -J $current_job_file\[1-$file_number_of_Blast_N\]\n";
         print PS "#SBATCH --array=1-$file_number_of_Blast_N\n";
-        if ($last_job_id) { print PS "#SBATCH -d afterok:".$last_job_id."\n"; }
+        if ($last_job_id && not $one_step) { print PS "#SBATCH -d afterok:".$last_job_id."\n"; }
         #################################
         print PS "BN_DIR=".$sample_full_path."/".$sample_name.".$BLAST_NT_DIR_SUFFIX\n";
         #print PBN "#\$ -t 1-$file_number_of_Blast_N:1","\n"; #must be a decimal number when the job file is created, cannot be a variable
@@ -1031,7 +1031,7 @@ sub blast_S{
 #####################################################################################
 
 sub report_for_each_sample{
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 12: report_for_each_sample\n";
 	$current_job_file = "j12_".$sample_name."_Rep_".$$.".sh";
 	open(REP, ">$job_files_dir/$current_job_file") or die $!;
@@ -1041,7 +1041,7 @@ sub report_for_each_sample{
     print REP "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print REP "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print REP "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print REP "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print REP "#SBATCH -d afterok:".$last_job_id."\n"; }
 	############################
 	print REP "INPUT=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.goodSeq\n";#RepeatMasker QC output
 	print REP "REPORT=".$sample_full_path."/".$sample_name.".gi.AssignmentReport\n";
@@ -1077,7 +1077,7 @@ sub report_for_each_sample{
 
 sub summary_for_each_sample{
 
-	# my ($step_by_step) = @_;
+	my ($one_step) = @_;
 	print STDOUT "Building job 13: summary_for_each_sample\n";
 	$current_job_file = "j13_".$sample_name."_Sum_".$$.".sh";
 
@@ -1088,7 +1088,7 @@ sub summary_for_each_sample{
     print SUM "#SBATCH -o $lsf_file_dir","/","$current_job_file.out\n";
     print SUM "#SBATCH -e $lsf_file_dir","/","$current_job_file.err\n";
     print SUM "#SBATCH -J $current_job_file\n";
-	if ($last_job_id) { print SUM "#SBATCH -d afterok:".$last_job_id."\n"; }
+	if ($last_job_id && not $one_step) { print SUM "#SBATCH -d afterok:".$last_job_id."\n"; }
 	############################
 	print SUM "OUTPUT=".$sample_full_path."/".$sample_name.".gi.AssignmentSummary\n";
 	print SUM "BAD_SEQ=".$sample_full_path."/".$sample_name.".fa.cdhit_out.masked.badSeq\n\n"; #output of RepeatMasker
