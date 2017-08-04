@@ -435,8 +435,8 @@ sub bsub_bwa{
 	#print BWA 
 	print BWA 'if [ ! -s $BWA_mapped ]',"\n";
     print BWA "    then\n";
-	print BWA "rm \${BWA_sai}","\n";
-	print BWA "rm \${BWA_fq}","\n";
+	print BWA "test -f ${BWA_sai} && rm \${BWA_sai}","\n";
+	print BWA "test -f ${BWA_fq} && rm \${BWA_fq}","\n";
 	#print BWA "mkfifo \${BWA_sai}","\n";
 	print BWA "mkfifo \${BWA_fq}","\n";
 	#0x100: secondary alignment
