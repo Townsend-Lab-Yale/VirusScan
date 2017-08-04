@@ -33,7 +33,7 @@ open (OUT, ">$out") or die "can not open file $out!\n";
 my $out2 = $dir."/".$lib_name.".gi.InterestingReads";
 open (OUT2, ">$out2") or die "can not open file $out2!\n";
 
-my $seq_file = $dir."/".$lib_name.".fa";
+my $seq_file = $dir."/".$lib_name.".RefGfiltered.fa"; # sgg added RefGfiltered
 my %sequences = &read_FASTA_data($seq_file); # read_ID => sequence
 
 my %ID_low = ();  # lineage => lowest percent identity to hits
